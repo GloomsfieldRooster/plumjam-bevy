@@ -8,7 +8,9 @@ fn main() {
             DefaultPlugins.set(
                 ImagePlugin::default_nearest()),
             InputPlugin))
+        .insert_resource(Inputs { ..Default::default() })
         .add_systems(Startup, setup)
+        .add_systems(Update, player_move)
         .run();
 }
 
@@ -47,4 +49,15 @@ fn setup(
         },
         Camera
     ));
+}
+
+fn player_move(
+    time: Res<Time>,
+    inputs: Res<Inputs>,
+
+    mut query: Query<&mut Transform, With<Wisteria>>
+) {
+    let direction = Vec2 { x: inputs.direction_right - inputs.direction_left, y: inputs.direction_up - inputs.direction_down };
+    let mut player_transform = query.single_mut();
+    player_transform.translation += Vec3 { x: direction.x, y: 0.0, z: direction.y } * time.delta_seconds();
 }
