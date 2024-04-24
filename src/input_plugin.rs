@@ -11,7 +11,7 @@ use bevy::{
 
 #[derive(Event)]
 pub struct InputUpdateEvent {
-   pub input_event: InputMappable,
+    pub input_event: InputMappable,
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -149,8 +149,8 @@ fn parse_input(
         let delta_x: f32 = mouse_motion_event.delta.x;
         let delta_y: f32 = mouse_motion_event.delta.y;
 
-        let p_delta_x :f32 = delta_x.abs();
-        let p_delta_y :f32 = delta_y.abs();
+        let p_delta_x: f32 = delta_x.abs();
+        let p_delta_y: f32 = delta_y.abs();
 
         let x_direction: InputDirection;
         let y_direction: InputDirection;
