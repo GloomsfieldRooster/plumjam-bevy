@@ -1,29 +1,50 @@
 use std::collections::HashMap;
 
 use bevy::{
-    input::{gamepad::{GamepadAxisChangedEvent, GamepadButtonInput}, keyboard::KeyboardInput, mouse::{MouseButtonInput, MouseMotion}}, prelude::*
+    input::{
+        gamepad::{GamepadAxisChangedEvent, GamepadButtonInput},
+        keyboard::KeyboardInput,
+        mouse::{MouseButtonInput, MouseMotion},
+    },
+    prelude::*,
 };
+
+#[derive(Event)]
+pub struct InputUpdateEvent {
+   pub input_event: InputMappable,
+}
 
 #[derive(PartialEq, Eq, Hash)]
 pub enum InputDirection {
     PositiveHorizontal,
     NegativeHorizontal,
     PositiveVertical,
-    NegativeVertical
+    NegativeVertical,
 }
 
 #[derive(PartialEq, Eq, Hash)]
 pub enum InputType {
-    KeyboardKey { key_code: KeyCode },
-    MouseButton { button_code: MouseButton },
-    MouseMovement { direction: InputDirection },
-    GamepadButton { button_code: GamepadButton },
-    GamepadAxis { axis: GamepadAxisType, axis_direction: InputDirection },
+    KeyboardKey {
+        key_code: KeyCode,
+    },
+    MouseButton {
+        button_code: MouseButton,
+    },
+    MouseMovement {
+        direction: InputDirection,
+    },
+    GamepadButton {
+        button_code: GamepadButton,
+    },
+    GamepadAxis {
+        axis: GamepadAxisType,
+        axis_direction: InputDirection,
+    },
 }
 
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
-pub enum InputMappables {
+pub enum InputMappable {
     DirectionUp,
     DirectionDown,
     DirectionLeft,
@@ -37,40 +58,56 @@ pub enum InputMappables {
 
 #[derive(Resource)]
 pub struct Inputs {
-    pub direction_up: f32,
-    pub direction_down: f32,
-    pub direction_left: f32,
-    pub direction_right: f32,
+    pub direction_up: (f32, bool),
+    pub direction_down: (f32, bool),
+    pub direction_left: (f32, bool),
+    pub direction_right: (f32, bool),
 
-    pub look_delta_left: f32,
-    pub look_delta_right: f32,
-    pub look_delta_up: f32,
-    pub look_delta_down: f32,
+    pub look_delta_left: (f32, bool),
+    pub look_delta_right: (f32, bool),
+    pub look_delta_up: (f32, bool),
+    pub look_delta_down: (f32, bool),
 
-    pub input_maps: HashMap<InputType, InputMappables>,
+    pub input_maps: HashMap<InputType, InputMappable>,
 }
 
 impl Default for Inputs {
     fn default() -> Self {
         Self {
-            direction_up: 0.0,
-            direction_down: 0.0,
-            direction_left: 0.0,
-            direction_right: 0.0,
-            look_delta_left: 0.0,
-            look_delta_down: 0.0,
-            look_delta_right: 0.0,
-            look_delta_up: 0.0,
+            direction_up: (0.0, false),
+            direction_down: (0.0, false),
+            direction_left: (0.0, false),
+            direction_right: (0.0, false),
+            look_delta_left: (0.0, false),
+            look_delta_down: (0.0, false),
+            look_delta_right: (0.0, false),
+            look_delta_up: (0.0, false),
             input_maps: HashMap::from([
-                (InputType::MouseMovement { direction: InputDirection::PositiveVertical }, InputMappables::DirectionUp),
-                (InputType::KeyboardKey { key_code: KeyCode::KeyS }, InputMappables::DirectionDown),
-                (InputType::KeyboardKey { key_code: KeyCode::KeyA }, InputMappables::DirectionLeft),
-                (InputType::KeyboardKey { key_code: KeyCode::KeyD }, InputMappables::DirectionRight),
-                (InputType::MouseMovement { direction: InputDirection::NegativeHorizontal }, InputMappables::LookDeltaLeft),
-                (InputType::MouseMovement { direction: InputDirection::PositiveHorizontal }, InputMappables::LookDeltaRight),
-                (InputType::MouseMovement { direction: InputDirection::NegativeVertical }, InputMappables::LookDeltaDown),
-                // (InputType::MouseMovement { direction: InputDirection::PositiveVertical }, InputMappables::LookDeltaUp),
-            ])
+                (
+                    InputType::MouseMovement {
+                        direction: InputDirection::PositiveVertical,
+                    },
+                    InputMappable::DirectionUp,
+                ),
+                (
+                    InputType::MouseMovement {
+                        direction: InputDirection::NegativeVertical,
+                    },
+                    InputMappable::DirectionDown,
+                ),
+                (
+                    InputType::MouseMovement {
+                        direction: InputDirection::NegativeHorizontal,
+                    },
+                    InputMappable::DirectionLeft,
+                ),
+                (
+                    InputType::MouseMovement {
+                        direction: InputDirection::PositiveHorizontal,
+                    },
+                    InputMappable::DirectionRight,
+                ),
+            ]),
         }
     }
 }
@@ -82,48 +119,78 @@ fn parse_input(
     mut gamepad_button_input_events: EventReader<GamepadButtonInput>,
     mut gamepad_axis_input_events: EventReader<GamepadAxisChangedEvent>,
 
+    mut input_update_event_writer: EventWriter<InputUpdateEvent>,
+
     mut inputs: ResMut<Inputs>,
 ) {
-    let mut events: Vec<(InputType, f32)> = Vec::new();
+    let mut events: Vec<(InputType, f32, bool)> = Vec::new();
 
     for keyboard_event in keyboard_input_events.read() {
-        events.push((InputType::KeyboardKey {
-            key_code: keyboard_event.key_code 
-        }, 
-        keyboard_event.state.is_pressed() as u8 as f32));
+        events.push((
+            InputType::KeyboardKey {
+                key_code: keyboard_event.key_code,
+            },
+            keyboard_event.state.is_pressed() as u8 as f32,
+            true,
+        ));
     }
 
     for mouse_button_event in mouse_button_input_events.read() {
-        events.push((InputType::MouseButton {
-            button_code: mouse_button_event.button
-        },
-        mouse_button_event.state.is_pressed() as u8 as f32));
+        events.push((
+            InputType::MouseButton {
+                button_code: mouse_button_event.button,
+            },
+            mouse_button_event.state.is_pressed() as u8 as f32,
+            true,
+        ));
     }
 
     for mouse_motion_event in mouse_motion_input_events.read() {
         let delta_x: f32 = mouse_motion_event.delta.x;
         let delta_y: f32 = mouse_motion_event.delta.y;
 
+        let p_delta_x :f32 = delta_x.abs();
+        let p_delta_y :f32 = delta_y.abs();
+
         let x_direction: InputDirection;
         let y_direction: InputDirection;
 
-        if delta_x >= 0.0 { x_direction = InputDirection::PositiveHorizontal; }
-        else { x_direction = InputDirection::NegativeHorizontal; }
+        if delta_x >= 0.0 {
+            x_direction = InputDirection::PositiveHorizontal;
+        } else {
+            x_direction = InputDirection::NegativeHorizontal;
+        }
 
-        if delta_y <= 0.0 { y_direction = InputDirection::PositiveVertical; }
-        else { y_direction = InputDirection::NegativeVertical; }
+        if delta_y >= 0.0 {
+            y_direction = InputDirection::PositiveVertical;
+        } else {
+            y_direction = InputDirection::NegativeVertical;
+        }
 
-        events.push((InputType::MouseMovement { direction: x_direction }, delta_x));
-        events.push((InputType::MouseMovement { direction: y_direction }, delta_y));
+        events.push((
+            InputType::MouseMovement {
+                direction: x_direction,
+            },
+            p_delta_x,
+            false,
+        ));
+        events.push((
+            InputType::MouseMovement {
+                direction: y_direction,
+            },
+            p_delta_y,
+            false,
+        ));
     }
 
-    
-
     for gamepad_button_event in gamepad_button_input_events.read() {
-        events.push((InputType::GamepadButton {
-            button_code: gamepad_button_event.button
-        },
-        gamepad_button_event.state.is_pressed() as u8 as f32));
+        events.push((
+            InputType::GamepadButton {
+                button_code: gamepad_button_event.button,
+            },
+            gamepad_button_event.state.is_pressed() as u8 as f32,
+            true,
+        ));
     }
 
     for gamepad_axis_event in gamepad_axis_input_events.read() {
@@ -134,60 +201,81 @@ fn parse_input(
             GamepadAxisType::LeftStickX => {
                 if value >= 0.0 {
                     direction = InputDirection::PositiveHorizontal;
-                }
-                else {
+                } else {
                     direction = InputDirection::NegativeHorizontal;
                 }
             }
             GamepadAxisType::LeftStickY => {
                 if value >= 0.0 {
                     direction = InputDirection::PositiveVertical;
-                }
-                else {
+                } else {
                     direction = InputDirection::NegativeVertical
                 }
             }
             GamepadAxisType::RightStickX => {
                 if value >= 0.0 {
                     direction = InputDirection::PositiveHorizontal;
-                }
-                else {
+                } else {
                     direction = InputDirection::NegativeHorizontal;
                 }
             }
             GamepadAxisType::RightStickY => {
                 if value >= 0.0 {
                     direction = InputDirection::PositiveVertical;
-                }
-                else {
+                } else {
                     direction = InputDirection::NegativeVertical;
                 }
             }
-            _ => { direction = InputDirection::NegativeHorizontal; }
+            _ => {
+                direction = InputDirection::NegativeHorizontal;
+            }
         }
-        
-        events.push((InputType::GamepadAxis {
-            axis: gamepad_axis_event.axis_type,
-            axis_direction: direction
-        },
-        gamepad_axis_event.value as f32));
+
+        events.push((
+            InputType::GamepadAxis {
+                axis: gamepad_axis_event.axis_type,
+                axis_direction: direction,
+            },
+            gamepad_axis_event.value as f32,
+            false,
+        ));
     }
 
     for event in events.iter() {
         match inputs.input_maps.get_key_value(&event.0) {
             Some(value) => {
+                input_update_event_writer.send(InputUpdateEvent {
+                    input_event: *value.1,
+                });
+
                 match value.1 {
-                    InputMappables::DirectionUp => { inputs.direction_up = event.1; },
-                    InputMappables::DirectionDown => { inputs.direction_down = event.1; },
-                    InputMappables::DirectionLeft => { inputs.direction_left = event.1; },
-                    InputMappables::DirectionRight => { inputs.direction_right = event.1; },
-                    InputMappables::LookDeltaLeft => { inputs.look_delta_left = event.1; },
-                    InputMappables::LookDeltaRight => { inputs.look_delta_right = event.1; },
-                    InputMappables::LookDeltaUp => { inputs.look_delta_up = event.1; }
-                    InputMappables::LookDeltaDown => { inputs.look_delta_down = event.1; }
+                    InputMappable::DirectionUp => {
+                        inputs.direction_up = (event.1, event.2);
+                    }
+                    InputMappable::DirectionDown => {
+                        inputs.direction_down = (event.1, event.2);
+                    }
+                    InputMappable::DirectionLeft => {
+                        inputs.direction_left = (event.1, event.2);
+                    }
+                    InputMappable::DirectionRight => {
+                        inputs.direction_right = (event.1, event.2);
+                    }
+                    InputMappable::LookDeltaLeft => {
+                        inputs.look_delta_left = (event.1, event.2);
+                    }
+                    InputMappable::LookDeltaRight => {
+                        inputs.look_delta_right = (event.1, event.2);
+                    }
+                    InputMappable::LookDeltaUp => {
+                        inputs.look_delta_up = (event.1, event.2);
+                    }
+                    InputMappable::LookDeltaDown => {
+                        inputs.look_delta_down = (event.1, event.2);
+                    }
                 }
             }
-            None => { }
+            None => {}
         }
     }
 }
