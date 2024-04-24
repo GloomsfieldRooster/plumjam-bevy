@@ -1,4 +1,11 @@
+use bevy::render::{
+    camera::Camera,
+    render_resource::{
+        Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+    },
+};
 use std::env;
+
 use {bevy::prelude::*, input_plugin::*};
 
 mod input_plugin;
@@ -24,7 +31,10 @@ fn main() {
 struct Wisteria;
 
 #[derive(Component)]
-struct Camera;
+struct MainCamera;
+
+#[derive(Component)]
+struct UiQuad;
 
 fn setup(
     mut commands: Commands,
@@ -33,6 +43,69 @@ fn setup(
 
     asset_server: Res<AssetServer>,
 ) {
+    let ui_texture_size = Extent3d {
+        width: 512,
+        height: 512,
+        ..default()
+    };
+
+    let mut ui_image = Image {
+        texture_descriptor: TextureDescriptor {
+            label: None,
+            size: ui_texture_size,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Bgra8UnormSrgb,
+            mip_level_count: 1,
+            sample_count: 1,
+            usage: TextureUsages::TEXTURE_BINDING
+                | TextureUsages::COPY_DST
+                | TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        },
+        ..default()
+    };
+
+    // clear the UI image
+    ui_image.resize(ui_texture_size);
+
+    let ui_texture_camera = commands
+        .spawn(Camera2dBundle {
+            camera: Camera {
+                order: 2,
+                clear_color: ClearColorConfig::None,
+                ..default()
+            },
+            ..default()
+        })
+        .id();
+
+    commands
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    flex_direction: FlexDirection::Column,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                background_color: BackgroundColor(Color::rgba(0.0, 0.0, 0.0, 0.0)),
+                ..default()
+            },
+            TargetCamera(ui_texture_camera),
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "Testing",
+                TextStyle {
+                    font_size: 40.0,
+                    color: Color::BLACK,
+                    ..default()
+                },
+            ));
+        });
+
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(Plane3d::default().mesh().size(2.841, 5.0)),
@@ -55,7 +128,7 @@ fn setup(
             transform: Transform::from_xyz(0.0, 1.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         },
-        Camera,
+        MainCamera,
     ));
 }
 
