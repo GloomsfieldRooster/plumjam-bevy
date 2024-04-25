@@ -33,9 +33,6 @@ struct Wisteria;
 #[derive(Component)]
 struct MainCamera;
 
-#[derive(Component)]
-struct UiQuad;
-
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
