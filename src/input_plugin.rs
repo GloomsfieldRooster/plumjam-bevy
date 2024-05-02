@@ -84,27 +84,19 @@ impl Default for Inputs {
             look_delta_up: (0.0, false),
             input_maps: HashMap::from([
                 (
-                    InputType::MouseMovement {
-                        direction: InputDirection::PositiveVertical,
-                    },
+                    InputType::KeyboardKey { key_code: KeyCode::KeyW },
                     InputMappable::DirectionUp,
                 ),
                 (
-                    InputType::MouseMovement {
-                        direction: InputDirection::NegativeVertical,
-                    },
+                    InputType::KeyboardKey { key_code: KeyCode::KeyS },
                     InputMappable::DirectionDown,
                 ),
                 (
-                    InputType::MouseMovement {
-                        direction: InputDirection::NegativeHorizontal,
-                    },
+                    InputType::KeyboardKey { key_code: KeyCode::KeyA },
                     InputMappable::DirectionLeft,
                 ),
                 (
-                    InputType::MouseMovement {
-                        direction: InputDirection::PositiveHorizontal,
-                    },
+                    InputType::KeyboardKey { key_code: KeyCode::KeyD },
                     InputMappable::DirectionRight,
                 ),
             ]),
@@ -171,14 +163,14 @@ fn parse_input(
             InputType::MouseMovement {
                 direction: x_direction,
             },
-            p_delta_x,
+            p_delta_x.abs(),
             false,
         ));
         events.push((
             InputType::MouseMovement {
                 direction: y_direction,
             },
-            p_delta_y,
+            p_delta_y.abs(),
             false,
         ));
     }
@@ -236,7 +228,7 @@ fn parse_input(
                 axis: gamepad_axis_event.axis_type,
                 axis_direction: direction,
             },
-            gamepad_axis_event.value as f32,
+            (gamepad_axis_event.value as f32).abs(),
             false,
         ));
     }

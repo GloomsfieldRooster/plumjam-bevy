@@ -1,12 +1,16 @@
-use bevy::render::{
-    camera::Camera,
-    render_resource::{
-        Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+use bevy::{
+    prelude::*,
+    render::{
+        camera::Camera,
+        render_resource::{
+            Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+        },
     },
 };
+
 use std::env;
 
-use {bevy::prelude::*, input_plugin::*};
+use input_plugin::*;
 
 mod input_plugin;
 
@@ -32,6 +36,9 @@ struct Wisteria;
 
 #[derive(Component)]
 struct MainCamera;
+
+#[derive(Component)]
+struct UiCamera;
 
 fn setup(
     mut commands: Commands,
@@ -65,7 +72,7 @@ fn setup(
     // clear the UI image
     ui_image.resize(ui_texture_size);
 
-    let ui_texture_camera = commands
+    let ui_camera = commands
         .spawn(Camera2dBundle {
             camera: Camera {
                 order: 2,
@@ -90,7 +97,7 @@ fn setup(
                 background_color: BackgroundColor(Color::rgba(0.0, 0.0, 0.0, 0.0)),
                 ..default()
             },
-            TargetCamera(ui_texture_camera),
+            TargetCamera(ui_camera),
         ))
         .with_children(|parent| {
             parent.spawn(TextBundle::from_section(
@@ -148,7 +155,7 @@ fn player_move(
     }
 
     if inputs.direction_down.1 {
-        player_transform.translation += Vec3 {
+        player_transform.translation -= Vec3 {
             x: 0.0,
             y: 0.0,
             z: inputs.direction_down.0,
